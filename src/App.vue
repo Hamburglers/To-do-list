@@ -57,8 +57,8 @@ const filteredList = computed(() => {
       <li v-for="(item, index) in filteredList" :key="item.id" @click="item.complete = !item.complete"
           :class="{ complete: item.complete }">{{ item.text }}
           <div>
-            <button @click.stop="editItem(index)" class="edit"><img src="edit.png"></button>
-            <button @click.stop="deleteItem(index)" class="delete"><img src="delete.png"></button>
+            <button @click.stop="editItem(index)" class="edit"><img src="/edit.png"></button>
+            <button @click.stop="deleteItem(index)" class="delete"><img src="/delete.png"></button>
           </div>
       </li>
   </TransitionGroup>
