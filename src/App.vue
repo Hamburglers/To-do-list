@@ -79,12 +79,19 @@ onMounted(() => {
   document.body.classList.add(modeIndex.value === 0 ? 'dark' : 'light');
 });
 
+function login() {
+
+}
+
 </script>
 
 <template>
-  <header>
-    <button @click="toggleMode"><img :src="switchMode[modeIndex].src" class="white-image"></button>
-  </header>
+  <Transition>
+    <header>
+      <button @click="login" style="font-size: 13px; width: 100px;">Login / Register</button>
+      <button @click="toggleMode"><img :src="switchMode[modeIndex].src" class="white-image"></button>
+    </header>
+  </Transition>
   <h2>To do</h2>
   <form @submit.prevent="submission">
     <input ref="inputRef" placeholder="e.g. Walk Odie" v-model="inputValue">
@@ -121,6 +128,7 @@ body {
   font-size: larger;
   display: flex;
   min-height: 100vh;
+  min-width: 100vw;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
@@ -136,26 +144,6 @@ body {
 
 .dark {
   background-image: linear-gradient(to right, rgb(115, 39, 115), rgb(33, 33, 103));
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: linear-gradient(to right, rgb(115, 39, 115), rgb(33, 33, 103));
-  z-index: -1;
-  transition: opacity 0.5s;
-}
-
-body.dark::before {
-  opacity: 1;
-}
-
-body.light::before {
-  opacity: 0;
 }
 
 h2 {
@@ -226,13 +214,16 @@ button {
   background-color: transparent;
   color: white;
   border: none;
-  border-bottom: 1px solid white;
   width: 30px;
   height: 30px;
   padding: 0px;
-  font-size: larger;
+  font-size: large;
   user-select: none;
   transition: transform 0.3s ease;
+}
+
+header > button:hover {
+  transform: scale(1.2);
 }
 
 header > button {
@@ -245,7 +236,9 @@ header > button {
 
 header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  max-width: 515px; /* 500px + 7px padding each side + 0.5px border each side*/
+  width: 65vw;
 }
 
 #add, #hide {
@@ -253,7 +246,7 @@ header {
 }
 
 #add:hover, #hide:hover {
-  font-size: 28px;
+  font-size: 20px;
 }
 
 .edit:hover, .delete:hover {
