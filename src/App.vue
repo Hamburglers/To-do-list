@@ -1,10 +1,19 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch, onMounted } from 'vue'
 
 const list = ref([{text: 'Example', complete: false}]);
 const inputValue = ref('');
 const hideCompleted = ref(false)
 const editingIndex = ref(-1)
+
+watch(list, (newList) => {
+  localStorage.setItem('myList', JSON.stringify(newList));
+}, { deep: true });
+
+const savedList = localStorage.getItem('myList');
+if (savedList) {
+  list.value = JSON.parse(savedList);
+}
 
 function generateUniqueId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -44,9 +53,38 @@ const filteredList = computed(() => {
   return hideCompleted.value ? list.value.filter(item => !item.complete) : list.value;
 });
 
+const switchMode = ref([
+  { src: "/brightness.png" },
+  { src: "/night-mode.png" }
+]);
+const modeIndex = ref(1);
+
+function toggleMode() {
+  modeIndex.value = modeIndex.value === 0 ? 1 : 0;
+}
+
+const darkBool = computed(() => modeIndex.value === 0);
+
+watch(darkBool, (newValue) => {
+  if (newValue) {
+    document.body.classList.add('dark');
+    document.body.classList.remove('light');
+  } else {
+    document.body.classList.remove('dark');
+    document.body.classList.add('light');
+  }
+});
+
+onMounted(() => {
+  document.body.classList.add(modeIndex.value === 0 ? 'dark' : 'light');
+});
+
 </script>
 
 <template>
+  <header>
+    <button @click="toggleMode"><img :src="switchMode[modeIndex].src" class="white-image"></button>
+  </header>
   <h2>To do</h2>
   <form @submit.prevent="submission">
     <input ref="inputRef" placeholder="e.g. Walk Odie" v-model="inputValue">
@@ -69,6 +107,7 @@ const filteredList = computed(() => {
 </template>
 
 <style>
+
 img {
   width: 20px;
   height: 20px;
@@ -89,7 +128,34 @@ body {
   margin: 0px;
   position: relative;
   box-sizing: border-box;
+}
+
+.light {
   background-image: linear-gradient(to right, rgb(255, 134, 255), rgb(113, 113, 250));
+}
+
+.dark {
+  background-image: linear-gradient(to right, rgb(115, 39, 115), rgb(33, 33, 103));
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(to right, rgb(115, 39, 115), rgb(33, 33, 103));
+  z-index: -1;
+  transition: opacity 0.5s;
+}
+
+body.dark::before {
+  opacity: 1;
+}
+
+body.light::before {
+  opacity: 0;
 }
 
 h2 {
@@ -101,6 +167,8 @@ h2 {
 
 .complete {
   text-decoration: line-through;
+  color: white;
+  background-color: rgb(193, 193, 193);
 }
 
 form {
@@ -111,7 +179,8 @@ form {
 
 input {
   font-size: larger;
-  width: 250px;
+  width: 50vw;
+  max-width: 200px;
   background: transparent;
   border: none;
   border-bottom: 1px solid white;
@@ -140,7 +209,8 @@ li {
   border: 0.5px solid black;
   background-color: white;
   padding: 7px;
-  width: 500px;
+  width: 65vw;
+  max-width: 500px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -163,6 +233,19 @@ button {
   font-size: larger;
   user-select: none;
   transition: transform 0.3s ease;
+}
+
+header > button {
+  border: none;
+}
+
+.white-image {
+  filter: invert(100%) brightness(2);
+}
+
+header {
+  display: flex;
+  justify-content: flex-end;
 }
 
 #add, #hide {
