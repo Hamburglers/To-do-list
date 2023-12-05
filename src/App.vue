@@ -109,7 +109,7 @@ onMounted(() => {
 // Send new data to database after editing
 const updateTodo = async (todo) => {
   try {
-    await axios.patch(`http://170.64.189.201:8080/todos/${todo.id}`, todo);
+    await axios.patch(`https://170.64.189.201:8080/todos/${todo.id}`, todo);
     // Optionally, refresh the list or handle UI updates
   } catch (error) {
     console.error('Error updating the to-do:', error);
@@ -120,7 +120,7 @@ const updateTodo = async (todo) => {
 // Add new data after submission
 const addTodo = async (todo) => {
   try {
-    const response = await axios.post('http://170.64.189.201:8080/todos', todo);
+    const response = await axios.post('https://170.64.189.201:8080/todos', todo);
     // Handle the response, e.g., adding the new to-do with an ID returned from the server
     // This is important if your database generates unique IDs for new entries
     const addedTodo = { ...todo, id: response.data.id };
@@ -134,7 +134,7 @@ const addTodo = async (todo) => {
 // Delete data in database
 const deleteTodo = async (id, index) => {
   try {
-    await axios.delete(`http://170.64.189.201:8080/todos/${id}`);
+    await axios.delete(`https://170.64.189.201:8080/todos/${id}`);
     // Remove the item from the local list after successful deletion
     list.value.splice(index, 1);
   } catch (error) {
@@ -150,7 +150,7 @@ const fetchTodos = async () => {
   }
 
   try {
-    const response = await axios.get('http://170.64.189.201:8080/todos');
+    const response = await axios.get('https://170.64.189.201:8080/todos');
     list.value = response.data;
   } catch (error) {
     console.error('Error fetching to-dos:', error);
