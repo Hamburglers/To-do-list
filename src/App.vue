@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, nextTick, watch, onMounted } from 'vue'
+import axios from 'axios';
 
 const list = ref([{text: 'Example', complete: false}]);
 const inputValue = ref('');
 const hideCompleted = ref(false)
 const editingIndex = ref(-1)
 
+// Save local data
 watch(list, (newList) => {
   localStorage.setItem('myList', JSON.stringify(newList));
 }, { deep: true });
@@ -19,29 +21,51 @@ function generateUniqueId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-function submission() {
+// Push changes to list
+async function submission() {
   if (inputValue.value.trim()) {
     if (editingIndex.value >= 0) {
       list.value[editingIndex.value].text = inputValue.value;
+      // Edit existing database
+      if (isLoggedIn.value) {
+        await updateTodo(list.value[editingIndex.value])
+      }
       editingIndex.value = -1;
     } else {
-      list.value.push({ id: generateUniqueId(), text: inputValue.value, complete: false });
+      // Append to existing database
+      if (isLoggedIn.value) {
+        const newTodo = { text: inputValue.value, complete: false };
+        await addTodo(newTodo);
+      } else {
+        list.value.push({ id: generateUniqueId(), text: inputValue.value, complete: false });
+      }
     }
     inputValue.value = '';
   }
 }
 
+// Delete list items with 1 tick debounce
 let isDeleting = false;
 
 async function deleteItem(index) {
   if (isDeleting) return;
   isDeleting = true;
-  list.value.splice(index, 1);
+  const todo = list.value[index];
+  if (isLoggedIn.value) {
+    try {
+      await deleteTodo(todo.id, index);
+    } catch (error) {
+      console.error('Error deleting the to-do:', error);
+    }
+  } else {
+    list.value.splice(index, 1);
+  }
   await nextTick();
   isDeleting = false;
 }
 const inputRef = ref(null);
 
+// Edit list items
 async function editItem(index) {
   inputValue.value = list.value[index].text;
   editingIndex.value = index;
@@ -49,10 +73,12 @@ async function editItem(index) {
   inputRef.value.select();
 }
 
+// If hide completed is selected, filter original list for uncompleted
 const filteredList = computed(() => {
   return hideCompleted.value ? list.value.filter(item => !item.complete) : list.value;
 });
 
+// Handle dark mode and light mode
 const switchMode = ref([
   { src: "/brightness.png" },
   { src: "/night-mode.png" }
@@ -79,8 +105,66 @@ onMounted(() => {
   document.body.classList.add(modeIndex.value === 0 ? 'dark' : 'light');
 });
 
-function login() {
+// Send new data to database after editing
+const updateTodo = async (todo) => {
+  try {
+    await axios.patch(`http://localhost:8080/todos/${todo.id}`, todo);
+    // Optionally, refresh the list or handle UI updates
+  } catch (error) {
+    console.error('Error updating the to-do:', error);
+  }
+  fetchTodos();
+};
 
+// Add new data after submission
+const addTodo = async (todo) => {
+  try {
+    const response = await axios.post('http://localhost:8080/todos', todo);
+    // Handle the response, e.g., adding the new to-do with an ID returned from the server
+    // This is important if your database generates unique IDs for new entries
+    const addedTodo = { ...todo, id: response.data.id };
+    list.value.push(addedTodo);
+  } catch (error) {
+    console.error('Error adding the to-do:', error);
+  }
+  fetchTodos();
+};
+
+// Delete data in database
+const deleteTodo = async (id, index) => {
+  try {
+    await axios.delete(`http://localhost:8080/todos/${id}`);
+    // Remove the item from the local list after successful deletion
+    list.value.splice(index, 1);
+  } catch (error) {
+    console.error('Error deleting the to-do:', error);
+  }
+  fetchTodos();
+};
+
+// Update list with data if logged in
+const fetchTodos = async () => {
+  if (!isLoggedIn.value) {
+    return; // Do not fetch if not logged in
+  }
+
+  try {
+    const response = await axios.get('http://localhost:8080/todos');
+    list.value = response.data;
+  } catch (error) {
+    console.error('Error fetching to-dos:', error);
+  }
+};
+
+// Handle public login
+const isLoggedIn = ref(false)
+function login() {
+  isLoggedIn.value = true;
+  fetchTodos();
+}
+
+function logout() {
+  isLoggedIn.value = false;
 }
 
 </script>
@@ -88,7 +172,8 @@ function login() {
 <template>
   <Transition>
     <header>
-      <button @click="login" style="font-size: 13px; width: 100px;">Login / Register</button>
+      <button v-if="!isLoggedIn" @click="login" style="font-size: 13px; width: 100px;">Login / Register</button>
+      <button v-else @click="logout" style="font-size: 13px; width: 100px;">Logged in</button>
       <button @click="toggleMode"><img :src="switchMode[modeIndex].src" class="white-image"></button>
     </header>
   </Transition>
