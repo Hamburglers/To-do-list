@@ -6,7 +6,7 @@ const list = ref([{text: 'Example', complete: false}]);
 const inputValue = ref('');
 const hideCompleted = ref(false)
 const editingIndex = ref(-1)
-const apiBaseUrl = 'http://hamburgler.xyz:8081';
+const apiBaseUrl = 'https://hamburgler.xyz:8081';
 
 // Save local data
 watch(list, (newList) => {
