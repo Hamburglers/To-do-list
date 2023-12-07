@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, watch, onMounted } from 'vue'
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
 import axios from 'axios';
 
 const list = ref([{text: 'Example', complete: false}]);
@@ -10,8 +10,11 @@ const apiBaseUrl = 'https://hamburgler.xyz:8081';
 
 // Save local data
 watch(list, (newList) => {
-  localStorage.setItem('myList', JSON.stringify(newList));
+  if (!isLoggedIn.value) {
+    localStorage.setItem('myList', JSON.stringify(newList));
+  }
 }, { deep: true });
+
 
 const savedList = localStorage.getItem('myList');
 if (savedList) {
@@ -28,15 +31,25 @@ async function submission() {
     if (editingIndex.value >= 0) {
       list.value[editingIndex.value].text = inputValue.value;
       // Edit existing database
-      if (isLoggedIn.value) {
-        await updateTodo(list.value[editingIndex.value])
+      if (isLoggedIn.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
+        ws.value.send(JSON.stringify({ action: 'edit', 
+          id: list.value[editingIndex.value].id,
+          text: list.value[editingIndex.value].text }));
+      } else {
+        // Fallback to HTTP request if WebSocket is not available
+        await updateTodo(list.value[editingIndex.value]);
       }
       editingIndex.value = -1;
     } else {
       // Append to existing database
       if (isLoggedIn.value) {
         const newTodo = { text: inputValue.value, complete: false };
-        await addTodo(newTodo);
+        if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+          ws.value.send(JSON.stringify({ action: 'add', text: inputValue.value }));
+        } else {
+          // Fallback to HTTP request if WebSocket is not available
+          await addTodo(newTodo);
+        }
       } else {
         list.value.push({ id: generateUniqueId(), text: inputValue.value, complete: false });
       }
@@ -53,10 +66,10 @@ async function deleteItem(index) {
   isDeleting = true;
   const todo = list.value[index];
   if (isLoggedIn.value) {
-    try {
+    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+      ws.value.send(JSON.stringify({ action: 'delete', id: todo.id }));
+    } else {
       await deleteTodo(todo.id, index);
-    } catch (error) {
-      console.error('Error deleting the to-do:', error);
     }
   } else {
     list.value.splice(index, 1);
@@ -103,8 +116,41 @@ watch(darkBool, (newValue) => {
   }
 });
 
+const ws = ref(null);
 onMounted(() => {
+  const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  isLoggedIn.value = loggedIn;
+  if (loggedIn) {
+    originalList.value = [...list.value];
+    fetchTodos();
+  }
   document.body.classList.add(modeIndex.value === 0 ? 'dark' : 'light');
+  ws.value = new WebSocket('wss://hamburgler.xyz:8081/ws');
+  ws.value.onmessage = (event) => {
+  // Only update the list from WebSocket data if the user is logged in
+    if (isLoggedIn.value) {
+      const data = JSON.parse(event.data);
+      if (Array.isArray(data)) {
+        list.value = data;
+      } else if (data === null){
+        list.value = []
+      }
+    }
+  };
+
+  ws.value.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+  ws.value.onclose = function(event) {
+    console.log("WebSocket Closed:", event.code, event.reason, event.wasClean);
+  };
+});
+
+onBeforeUnmount(() => {
+  list.value = [...originalList.value];
+  if (ws.value) {
+      ws.value.close(); // Close WebSocket connection when component is destroyed
+  }
 });
 
 // Send new data to database after editing
@@ -161,15 +207,19 @@ const fetchTodos = async () => {
 // Handle public login
 const isLoggedIn = ref(false)
 const originalList = ref([]);
+// Save login state to local storage
 function login() {
+  localStorage.setItem('isLoggedIn', 'true');
   isLoggedIn.value = true;
   originalList.value = [...list.value];
   fetchTodos();
 }
 
 function logout() {
+  localStorage.setItem('isLoggedIn', 'false');
   isLoggedIn.value = false;
   list.value = [...originalList.value];
+  localStorage.setItem('myList', JSON.stringify(originalList.value));
 }
 
 </script>
