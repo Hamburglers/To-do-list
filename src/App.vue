@@ -222,6 +222,14 @@ function logout() {
   localStorage.setItem('myList', JSON.stringify(originalList.value));
 }
 
+function completion(item) {
+  if (isLoggedIn.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
+      ws.value.send(JSON.stringify({ action: 'complete', id: item.id }));
+  } else {
+    item.complete = !item.complete
+  }
+}
+
 </script>
 
 <template>
@@ -239,7 +247,7 @@ function logout() {
   </form>
   <ul>
     <TransitionGroup name="list" tag="ul">
-      <li v-for="(item, index) in filteredList" :key="item.id" @click="item.complete = !item.complete"
+      <li v-for="(item, index) in filteredList" :key="item.id" @click="completion(item)"
           :class="{ complete: item.complete }">{{ item.text }}
           <div>
             <button @click.stop="editItem(index)" class="edit"><img src="/edit.png"></button>
